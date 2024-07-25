@@ -56,6 +56,7 @@ buildUI wenv model = widgetTree where
       vstack [ 
         hstack [
           label (_openMoji_emoji x) `styleBasic` [textFont "Emoji", padding 10],
+          label (_openMoji_emoji x) `styleBasic` [textFont "EmojiNoColor", padding 10],
           label (_openMoji_annotation x) `styleBasic` [textFont "Regular", padding 10]
           ]
         | x <- model ^. emojis 
@@ -84,6 +85,7 @@ main = do
       appWindowIcon "./assets/images/icon.png",
       appTheme darkTheme,
       appFontDef "Emoji" [i|#{exeDir}/../assets/fonts/NotoColorEmoji-Regular.ttf |],
+      appFontDef "EmojiNoColor" [i|#{exeDir}/../assets/fonts/NotoEmoji-Regular.ttf |],
       appFontDef "Regular" [i|#{exeDir}/../assets/fonts/Roboto-Regular.ttf|],
       appFontDef "Medium" [i|#{exeDir}/../assets/fonts/Roboto-Medium.ttf|],
       appFontDef "Bold" [i|#{exeDir}/../assets/fonts/Roboto-Bold.ttf|],
