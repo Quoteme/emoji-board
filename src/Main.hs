@@ -11,8 +11,6 @@ import Data.Text qualified as T
 import Data.String.Interpolate (i)
 import Monomer.Lens qualified as L
 
-import qualified EmojiDatabase as ED
-
 import Control.Lens
 import Data.Text (Text)
 import Monomer
@@ -24,11 +22,14 @@ import System.FilePath (takeDirectory)
 import Control.Monad (when)
 import System.Exit (exitFailure)
 import Data.Maybe (isNothing, fromJust)
+import Text.Emoji.OpenMoji.Types (OpenMoji (_openMoji_tags, _openMoji_annotation, _openMoji_emoji))
+import Text.Emoji.OpenMoji.Data (openmojis)
+import qualified Text.Fuzzily as Fuzzy
+import Data.List.Extra (sortBy)
 
 data AppModel = AppModel {
   _query :: Text,
-  _emojis :: [ED.Emoji],
-  _foundEmojis :: [ED.Emoji]
+  _emojis :: [OpenMoji]
 } deriving (Eq, Show)
 
 data AppEvent
@@ -52,9 +53,14 @@ buildUI wenv model = widgetTree where
   widgetTree = vstack [
       searchForm,
       spacer,
-      hstack [ label (ED.emoji x) | x <- model ^. foundEmojis ],
-      label $ "Total emojis: 🤓" <> showt (length (model ^. emojis)),
-      label $ "Found " <> showt (length (model ^. foundEmojis)) <> " emojis"
+      vstack [ 
+        hstack [
+          label (_openMoji_emoji x) `styleBasic` [textFont "Emoji", padding 10],
+          label (_openMoji_annotation x) `styleBasic` [textFont "Regular", padding 10]
+          ]
+        | x <- model ^. emojis 
+        ],
+      label $ "🤓 Found emojis: " <> showt (length (model ^. emojis))
     ] `styleBasic` [padding 10]
 
 handleEvent
@@ -66,23 +72,33 @@ handleEvent
 handleEvent wenv node model evt = case evt of
   AppInit -> []
   AppSearch s -> [
-    Model (model & query .~ s & foundEmojis .~ ED.queryEmojiDatabase s (model ^. emojis))
+    Model (model & query .~ s & emojis .~ fuzzyFindEmoji s)
     ]
 
 main :: IO ()
 main = do
   exeDir <- takeDirectory <$> getExecutablePath
-  emojis <- fromJust <$> ED.readEmojiDatabase
   let
     config = [
       appWindowTitle "Emoji-Keyboard",
       appWindowIcon "./assets/images/icon.png",
       appTheme darkTheme,
+      appFontDef "Emoji" [i|#{exeDir}/../assets/fonts/NotoColorEmoji-Regular.ttf |],
       appFontDef "Regular" [i|#{exeDir}/../assets/fonts/Roboto-Regular.ttf|],
       appFontDef "Medium" [i|#{exeDir}/../assets/fonts/Roboto-Medium.ttf|],
       appFontDef "Bold" [i|#{exeDir}/../assets/fonts/Roboto-Bold.ttf|],
       appFontDef "Remix" [i|#{exeDir}/../assets/fonts/remixicon.ttf|],
       appInitEvent AppInit
       ]
-    model = AppModel "" emojis []
+    model = AppModel "" []
   startApp model handleEvent buildUI config
+
+-- | Fuzzy-find emojis by their annotation
+fuzzyFindEmoji :: Text -> [OpenMoji]
+fuzzyFindEmoji query = do
+  let emojis = fuzzyFindEmoji' query
+  let sorted = sortBy (\x y -> compare (Fuzzy.score x) (Fuzzy.score y)) emojis
+  [Fuzzy.original x | x <- sorted]
+
+fuzzyFindEmoji' :: Text -> [Fuzzy.Fuzzy OpenMoji Text]
+fuzzyFindEmoji' query = Fuzzy.filter Fuzzy.IgnoreCase ("","") _openMoji_annotation query openmojis 
