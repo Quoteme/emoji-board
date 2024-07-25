@@ -13,6 +13,7 @@
         myGHC = pkgs.haskellPackages.ghcWithPackages (ps: with ps; [
           base
           text
+          string-interpolate
           monomer
         ]);
       in rec
@@ -46,9 +47,8 @@
           '';
           installPhase = ''
             mkdir -p $out/bin
-            mkdir -p $out/assets/fonts
             echo "adding fonts..."
-            cp $src/assets/fonts/Roboto-Regular.ttf $out/assets/fonts
+            cp -r $src/assets $out/assets
             cp emoji-keyboard $out/bin
           '';
 

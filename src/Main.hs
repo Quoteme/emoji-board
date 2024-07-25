@@ -3,10 +3,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Main where
 
 import Data.Text qualified as T
+import Data.String.Interpolate (i)
 import Monomer.Lens qualified as L
 
 import Control.Lens
@@ -15,6 +17,8 @@ import Monomer
 import TextShow
 
 import qualified Monomer.Lens as L
+import System.Environment (getExecutablePath)
+import System.FilePath (takeDirectory)
 
 newtype AppModel = AppModel {
   _clickCount :: Int
@@ -54,13 +58,18 @@ handleEvent wenv node model evt = case evt of
 
 main :: IO ()
 main = do
-  startApp model handleEvent buildUI config
+  exeDir <- takeDirectory <$> getExecutablePath
+  putStrLn [i|Starting app from: #{exeDir}|]
+  startApp model handleEvent buildUI (config exeDir)
   where
-    config = [
+    config exeDir = [
       appWindowTitle "Emoji-Keyboard",
       appWindowIcon "./assets/images/icon.png",
       appTheme darkTheme,
-      appFontDef "Roboto" "../assets/fonts/Roboto-Regular.ttf",
+      appFontDef "Regular" [i|#{exeDir}/../assets/fonts/Roboto-Regular.ttf|],
+      appFontDef "Medium" [i|#{exeDir}/../assets/fonts/Roboto-Medium.ttf|],
+      appFontDef "Bold" [i|#{exeDir}/../assets/fonts/Roboto-Bold.ttf|],
+      appFontDef "Remix" [i|#{exeDir}/../assets/fonts/remixicon.ttf|],
       appInitEvent AppInit
       ]
     model = AppModel 0
