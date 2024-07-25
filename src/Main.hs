@@ -21,9 +21,14 @@ import TextShow
 import qualified Monomer.Lens as L
 import System.Environment (getExecutablePath)
 import System.FilePath (takeDirectory)
+import Control.Monad (when)
+import System.Exit (exitFailure)
+import Data.Maybe (isNothing, fromJust)
 
-newtype AppModel = AppModel {
-  _query :: Text
+data AppModel = AppModel {
+  _query :: Text,
+  _emojis :: [ED.Emoji],
+  _foundEmojis :: [ED.Emoji]
 } deriving (Eq, Show)
 
 data AppEvent
@@ -40,19 +45,16 @@ buildUI
 buildUI wenv model = widgetTree where
   searchForm = vstack [
       hstack [
-        label "Query:",
-        spacer,
         textField query `nodeKey` "query",
-        spacer
+        button "SEARCH!" $ AppSearch (model ^. query)
       ] `styleBasic` [padding 25]
     ]
   widgetTree = vstack [
       searchForm,
       spacer,
-      hstack [
-        label $ "Click count: " <> showt (model ^. query),
-        button "Increase count" $ AppSearch "test"
-      ]
+      hstack [ label (ED.emoji x) | x <- model ^. foundEmojis ],
+      label $ "Total emojis: 🤓" <> showt (length (model ^. emojis)),
+      label $ "Found " <> showt (length (model ^. foundEmojis)) <> " emojis"
     ] `styleBasic` [padding 10]
 
 handleEvent
@@ -63,15 +65,16 @@ handleEvent
   -> [AppEventResponse AppModel AppEvent]
 handleEvent wenv node model evt = case evt of
   AppInit -> []
-  AppSearch s -> [Model (model & query .~ s)]
+  AppSearch s -> [
+    Model (model & query .~ s & foundEmojis .~ ED.queryEmojiDatabase s (model ^. emojis))
+    ]
 
 main :: IO ()
 main = do
   exeDir <- takeDirectory <$> getExecutablePath
-  putStrLn [i|Starting app from: #{exeDir}|]
-  startApp model handleEvent buildUI (config exeDir)
-  where
-    config exeDir = [
+  emojis <- fromJust <$> ED.readEmojiDatabase
+  let
+    config = [
       appWindowTitle "Emoji-Keyboard",
       appWindowIcon "./assets/images/icon.png",
       appTheme darkTheme,
@@ -81,4 +84,5 @@ main = do
       appFontDef "Remix" [i|#{exeDir}/../assets/fonts/remixicon.ttf|],
       appInitEvent AppInit
       ]
-    model = AppModel ""
+    model = AppModel "" emojis []
+  startApp model handleEvent buildUI config
