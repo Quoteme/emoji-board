@@ -15,6 +15,7 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         myGHC = pkgs.haskellPackages.ghcWithPackages (ps: with ps; [
+          aeson
           base
           text
           string-interpolate

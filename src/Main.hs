@@ -11,6 +11,8 @@ import Data.Text qualified as T
 import Data.String.Interpolate (i)
 import Monomer.Lens qualified as L
 
+import qualified EmojiDatabase as ED
+
 import Control.Lens
 import Data.Text (Text)
 import Monomer
