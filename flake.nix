@@ -46,6 +46,8 @@
           '';
           installPhase = ''
             mkdir -p $out/bin
+            mkdir -p $out/assets/fonts
+            cp $src/assets/fonts/Roboto-Regular.ttf $out/assets/fonts
             cp emoji-keyboard $out/bin
           '';
 
