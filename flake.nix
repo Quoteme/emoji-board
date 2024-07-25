@@ -54,6 +54,7 @@
             mkdir -p $out/bin
             echo "adding fonts..."
             cp -r $src/assets $out/assets
+            chmod +w $out/assets
             cp ${gemoji-database} $out/assets/emoji.json
             cp emoji-keyboard $out/bin
           '';

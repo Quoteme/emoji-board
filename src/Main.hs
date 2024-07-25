@@ -23,12 +23,12 @@ import System.Environment (getExecutablePath)
 import System.FilePath (takeDirectory)
 
 newtype AppModel = AppModel {
-  _clickCount :: Int
+  _query :: Text
 } deriving (Eq, Show)
 
 data AppEvent
   = AppInit
-  | AppIncrease
+  | AppSearch Text
   deriving (Eq, Show)
 
 makeLenses 'AppModel
@@ -38,13 +38,20 @@ buildUI
   -> AppModel
   -> WidgetNode AppModel AppEvent
 buildUI wenv model = widgetTree where
+  searchForm = vstack [
+      hstack [
+        label "Query:",
+        spacer,
+        textField query `nodeKey` "query",
+        spacer
+      ] `styleBasic` [padding 25]
+    ]
   widgetTree = vstack [
-      label "Hello world",
+      searchForm,
       spacer,
       hstack [
-        label $ "Click count: " <> showt (model ^. clickCount),
-        spacer,
-        button "Increase count" AppIncrease
+        label $ "Click count: " <> showt (model ^. query),
+        button "Increase count" $ AppSearch "test"
       ]
     ] `styleBasic` [padding 10]
 
@@ -56,7 +63,7 @@ handleEvent
   -> [AppEventResponse AppModel AppEvent]
 handleEvent wenv node model evt = case evt of
   AppInit -> []
-  AppIncrease -> [Model (model & clickCount +~ 1)]
+  AppSearch s -> [Model (model & query .~ s)]
 
 main :: IO ()
 main = do
@@ -74,4 +81,4 @@ main = do
       appFontDef "Remix" [i|#{exeDir}/../assets/fonts/remixicon.ttf|],
       appInitEvent AppInit
       ]
-    model = AppModel 0
+    model = AppModel ""

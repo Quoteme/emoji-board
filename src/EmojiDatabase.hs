@@ -20,6 +20,9 @@ data Emoji = Emoji {
 
 instance FromJSON Emoji
 
+readEmojiDatabase :: IO (Maybe [Emoji])
+readEmojiDatabase = readEmojiDatabase' =<< defaultEmojiDatabaseLocation
+
 defaultEmojiDatabaseLocation :: IO FilePath
 defaultEmojiDatabaseLocation = do
   exeDir <- takeDirectory <$> getExecutablePath
