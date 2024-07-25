@@ -3,10 +3,14 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    gemoji-database = {
+      url = "https://raw.githubusercontent.com/github/gemoji/master/db/emoji.json";
+      flake = false;
+    };
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, gemoji-database }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
@@ -49,6 +53,7 @@
             mkdir -p $out/bin
             echo "adding fonts..."
             cp -r $src/assets $out/assets
+            cp ${gemoji-database} $out/assets/emoji.json
             cp emoji-keyboard $out/bin
           '';
 
@@ -71,6 +76,15 @@
             haskellPackages.ghci-dap
             haskellPackages.haskell-debug-adapter
           ];
+
+          shellHook = ''
+            # check if the emoji database has been copied into the assets folder
+            if [ ! -f ./assets/emoji.json ]; then
+              echo "Copying emoji database..."
+              cp "${gemoji-database}" "src/assets/emoji.json"
+            fi
+            echo "Welcome to the emoji-keyboard dev shell"
+          '';
         };
       }
     );
