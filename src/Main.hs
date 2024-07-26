@@ -19,7 +19,7 @@ import qualified GI.Gtk as Gtk (main, init)
 import GI.Gtk
        (widgetShowAll, setContainerChild, widgetDestroy, onButtonClicked,
         setButtonLabel, buttonNew, setWindowTitle, setContainerBorderWidth,
-        mainQuit, onWidgetDestroy, windowNew, searchBarNew, searchEntryNew, boxNew, Orientation (OrientationVertical, OrientationHorizontal), boxPackEnd, boxPackStart, Box, containerForeach, widgetSetTooltipText)
+        mainQuit, onWidgetDestroy, windowNew, searchBarNew, searchEntryNew, boxNew, Orientation (OrientationVertical, OrientationHorizontal), boxPackEnd, boxPackStart, Box, containerForeach, widgetSetTooltipText, onEntryBufferInsertedText, searchEntryHandleEvent, flowBoxInsert, flowBoxNew)
 import GI.Gtk.Enums (WindowType(..))
 import Control.Monad (forM, forM_)
 import Data.List.Split (chunksOf)
@@ -35,25 +35,25 @@ fuzzyFindEmoji' :: T.Text -> [Fuzzy.Fuzzy OpenMoji T.Text]
 fuzzyFindEmoji' query = Fuzzy.filter Fuzzy.IgnoreCase ("","") _openMoji_annotation query openmojis 
 
 -- showResults :: T.Text -> Box -> _
-showResults query box n m = do
+showResults query flowbox n m = do
   -- 1. clear the box
-  containerForeach box widgetDestroy
+  containerForeach flowbox widgetDestroy
   -- 2. get the results
   let results = fuzzyFindEmoji query & take (n * m)
   let rows = chunksOf m results
   -- 3. show the results
-  -- forM results $ \emoji -> do
-  --   button <- buttonNew
-  --   setButtonLabel button (_openMoji_emoji emoji)
-  --   boxPackStart box button False False 0
-  forM_ rows $ \row -> do
-    rowBox <- boxNew OrientationHorizontal 10
-    forM_ row $ \emoji -> do
-      button <- buttonNew
-      setButtonLabel button (_openMoji_emoji emoji)
-      widgetSetTooltipText button (Just $ _openMoji_annotation emoji)
-      boxPackStart rowBox button False False 0
-    boxPackStart box rowBox False False 0
+  forM results $ \emoji -> do
+    button <- buttonNew
+    setButtonLabel button (_openMoji_emoji emoji)
+    flowBoxInsert flowbox button 0
+  -- forM_ rows $ \row -> do
+  --   rowBox <- boxNew OrientationHorizontal 10
+  --   forM_ row $ \emoji -> do
+  --     button <- buttonNew
+  --     setButtonLabel button (_openMoji_emoji emoji)
+  --     widgetSetTooltipText button (Just $ _openMoji_annotation emoji)
+  --     boxPackStart rowBox button False False 0
+  --   boxPackStart box rowBox False False 0
   
 
 main :: IO ()
@@ -72,7 +72,7 @@ main = do
   search <- searchEntryNew
   boxPackStart root search False False 0
 
-  results <- boxNew OrientationVertical 10
+  results <- flowBoxNew 
   boxPackStart root results False False 0
 
   showResults "hand" results 5 5
