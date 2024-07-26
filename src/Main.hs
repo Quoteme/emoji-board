@@ -20,28 +20,38 @@ import qualified GI.Gtk as Gtk (main, init)
 import GI.Gtk
        (widgetShowAll, setContainerChild, widgetDestroy, onButtonClicked,
         setButtonLabel, buttonNew, setWindowTitle, setContainerBorderWidth,
-        mainQuit, onWidgetDestroy, windowNew, searchBarNew, searchEntryNew, boxNew, Orientation (OrientationVertical, OrientationHorizontal), boxPackEnd, boxPackStart, Box, containerForeach, widgetSetTooltipText, onEntryBufferInsertedText, searchEntryHandleEvent, flowBoxInsert, flowBoxNew, onSearchEntrySearchChanged, entryGetText, afterSearchEntryStopSearch, afterSearchEntrySearchChanged)
+        mainQuit, onWidgetDestroy, windowNew, searchBarNew, searchEntryNew, boxNew, Orientation (OrientationVertical, OrientationHorizontal), boxPackEnd, boxPackStart, Box, containerForeach, widgetSetTooltipText, onEntryBufferInsertedText, searchEntryHandleEvent, flowBoxInsert, flowBoxNew, onSearchEntrySearchChanged, entryGetText, afterSearchEntryStopSearch, afterSearchEntrySearchChanged, containerAdd)
 import GI.Gtk.Enums (WindowType(..))
 import Control.Monad (forM, forM_, void)
 import Data.List.Split (chunksOf)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe, catMaybes, mapMaybe)
 
 -- | Fuzzy-find emojis by their annotation
 fuzzyFindEmojiSorted :: T.Text -> [Fuzzy.Fuzzy OpenMoji T.Text]
 fuzzyFindEmojiSorted query = do
   let emojis = fuzzyFindEmoji query
-  let weightFunc x = Fuzzy.original x & _openMoji_order & fromMaybe 10000
-  sortBy (\x y -> compare (weightFunc x) (weightFunc y)) emojis
+  let weightFunc x = Fuzzy.score x
+  sortBy (\x y -> compare (weightFunc y) (weightFunc x)) emojis
 
-fuzzyFindEmoji :: T.Text -> [Fuzzy.Fuzzy OpenMoji T.Text]
-fuzzyFindEmoji query = Fuzzy.filter Fuzzy.IgnoreCase ("<",">") (\e -> T.intercalate " ;" (_openMoji_tags e) <> _openMoji_annotation e) query openmojis 
+fuzzyFindEmoji  :: T.Text -> [Fuzzy.Fuzzy OpenMoji T.Text]
+fuzzyFindEmoji query = mapMaybe (doesEmojiMatch query) openmojis
+  where
+    makeEmojiSearchable :: OpenMoji -> [(T.Text, OpenMoji)]
+    makeEmojiSearchable emoji = [(tag, emoji) | tag <- _openMoji_tags emoji] ++ [(_openMoji_annotation emoji, emoji)]
+    -- doesEmojiMatch :: OpenMoji -> Maybe (Fuzzy.Fuzzy OpenMoji T.Text)
+    doesEmojiMatch :: T.Text -> OpenMoji -> Maybe (Fuzzy.Fuzzy OpenMoji T.Text)
+    doesEmojiMatch query emoji = listToMaybe . catMaybes $
+      [Fuzzy.match Fuzzy.IgnoreCase ("<", ">") (const text) query emoji | (text, emoji) <- makeEmojiSearchable emoji]
+
+generateTuples :: [[a]] -> [(a, [a])]
+generateTuples = concatMap (\xs -> [(x, xs) | x <- xs])
 
 -- showResults :: T.Text -> Box -> _
 showResults query flowbox n = do
   -- 1. clear the box
   containerForeach flowbox widgetDestroy
   -- 2. get the results
-  let results = fuzzyFindEmoji query & take n
+  let results = fuzzyFindEmojiSorted query & take n
   -- 3. show the results
   forM_ results $ \emoji -> do
     button <- buttonNew
@@ -49,20 +59,12 @@ showResults query flowbox n = do
     widgetSetTooltipText button (Just $ T.unlines [
       _openMoji_annotation $ Fuzzy.original emoji,
       "Tags: " <> T.intercalate ", " (_openMoji_tags $ Fuzzy.original emoji),
+      "Score: " <> T.pack (show $ Fuzzy.score emoji),
       "Match: " <> T.pack (show $ Fuzzy.rendered emoji)
       ])
-    flowBoxInsert flowbox button 0
+    containerAdd flowbox button
   putStrLn [i|Showing #{length results} results for '#{query}'|]
   widgetShowAll flowbox
-  -- forM_ rows $ \row -> do
-  --   rowBox <- boxNew OrientationHorizontal 10
-  --   forM_ row $ \emoji -> do
-  --     button <- buttonNew
-  --     setButtonLabel button (_openMoji_emoji emoji)
-  --     widgetSetTooltipText button (Just $ _openMoji_annotation emoji)
-  --     boxPackStart rowBox button False False 0
-  --   boxPackStart box rowBox False False 0
-  
 
 main :: IO ()
 main = do
