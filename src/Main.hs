@@ -35,12 +35,11 @@ fuzzyFindEmoji' :: T.Text -> [Fuzzy.Fuzzy OpenMoji T.Text]
 fuzzyFindEmoji' query = Fuzzy.filter Fuzzy.IgnoreCase ("","") _openMoji_annotation query openmojis 
 
 -- showResults :: T.Text -> Box -> _
-showResults query flowbox n m = do
+showResults query flowbox n = do
   -- 1. clear the box
   containerForeach flowbox widgetDestroy
   -- 2. get the results
-  let results = fuzzyFindEmoji query & take (n * m)
-  let rows = chunksOf m results
+  let results = fuzzyFindEmoji query & take n
   -- 3. show the results
   forM results $ \emoji -> do
     button <- buttonNew
@@ -75,7 +74,7 @@ main = do
   results <- flowBoxNew 
   boxPackStart root results False False 0
 
-  showResults "hand" results 5 5
+  showResults "hand" results 30
 
   setContainerChild window root
 
