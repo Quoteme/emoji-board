@@ -17,7 +17,7 @@
           string-interpolate
           hs-openmoji-data
           fuzzily
-          monomer
+          gi-gtk
         ]);
       in rec
       {

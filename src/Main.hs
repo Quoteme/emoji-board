@@ -1,104 +1,97 @@
 {-# LANGUAGE BinaryLiterals #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 module Main where
 
 import Data.Text qualified as T
 import Data.String.Interpolate (i)
-import Monomer.Lens qualified as L
 
-import Control.Lens
-import Data.Text (Text)
-import Monomer
-import TextShow
-
-import qualified Monomer.Lens as L
-import System.Environment (getExecutablePath)
-import System.FilePath (takeDirectory)
-import Control.Monad (when)
-import System.Exit (exitFailure)
-import Data.Maybe (isNothing, fromJust)
-import Text.Emoji.OpenMoji.Types (OpenMoji (_openMoji_tags, _openMoji_annotation, _openMoji_emoji))
+import Data.Function ((&))
+import Text.Emoji.OpenMoji.Types (OpenMoji (_openMoji_tags, _openMoji_annotation, _openMoji_emoji, _openMoji_order))
 import Text.Emoji.OpenMoji.Data (openmojis)
 import qualified Text.Fuzzily as Fuzzy
-import Data.List.Extra (sortBy)
+import Data.List (sortBy, intercalate)
 
-data AppModel = AppModel {
-  _query :: Text,
-  _emojis :: [OpenMoji]
-} deriving (Eq, Show)
+import qualified GI.Gtk as Gtk (main, init)
+import GI.Gtk
+       (widgetShowAll, setContainerChild, widgetDestroy, onButtonClicked,
+        setButtonLabel, buttonNew, setWindowTitle, setContainerBorderWidth,
+        mainQuit, onWidgetDestroy, windowNew, searchBarNew, searchEntryNew, boxNew, Orientation (OrientationVertical, OrientationHorizontal), boxPackEnd, boxPackStart, Box, containerForeach, widgetSetTooltipText, onEntryBufferInsertedText, searchEntryHandleEvent, flowBoxInsert, flowBoxNew, onSearchEntrySearchChanged, entryGetText, afterSearchEntryStopSearch, afterSearchEntrySearchChanged, containerAdd)
+import GI.Gtk.Enums (WindowType(..))
+import Control.Monad (forM, forM_, void)
+import Data.List.Split (chunksOf)
+import Data.Maybe (fromMaybe, listToMaybe, catMaybes, mapMaybe)
 
-data AppEvent
-  = AppInit
-  | AppSearch Text
-  deriving (Eq, Show)
+-- | Fuzzy-find emojis by their annotation
+fuzzyFindEmojiSorted :: T.Text -> [Fuzzy.Fuzzy OpenMoji T.Text]
+fuzzyFindEmojiSorted query = do
+  let emojis = fuzzyFindEmoji query
+  let weightFunc x = Fuzzy.score x
+  sortBy (\x y -> compare (weightFunc y) (weightFunc x)) emojis
 
-makeLenses 'AppModel
+fuzzyFindEmoji  :: T.Text -> [Fuzzy.Fuzzy OpenMoji T.Text]
+fuzzyFindEmoji query = mapMaybe (doesEmojiMatch query) openmojis
+  where
+    makeEmojiSearchable :: OpenMoji -> [(T.Text, OpenMoji)]
+    makeEmojiSearchable emoji = [(tag, emoji) | tag <- _openMoji_tags emoji] ++ [(_openMoji_annotation emoji, emoji)]
+    -- doesEmojiMatch :: OpenMoji -> Maybe (Fuzzy.Fuzzy OpenMoji T.Text)
+    doesEmojiMatch :: T.Text -> OpenMoji -> Maybe (Fuzzy.Fuzzy OpenMoji T.Text)
+    doesEmojiMatch query emoji = listToMaybe . catMaybes $
+      [Fuzzy.match Fuzzy.IgnoreCase ("<", ">") (const text) query emoji | (text, emoji) <- makeEmojiSearchable emoji]
 
-buildUI
-  :: WidgetEnv AppModel AppEvent
-  -> AppModel
-  -> WidgetNode AppModel AppEvent
-buildUI wenv model = widgetTree where
-  searchForm = vstack [
-      hstack [
-        textField query `nodeKey` "query",
-        button "SEARCH!" $ AppSearch (model ^. query)
-      ] `styleBasic` [padding 25]
-    ]
-  widgetTree = vstack [
-      searchForm,
-      spacer,
-      vstack [ 
-        hstack [
-          label (_openMoji_emoji x) `styleBasic` [textFont "Emoji", padding 10],
-          label (_openMoji_annotation x) `styleBasic` [textFont "Regular", padding 10]
-          ]
-        | x <- model ^. emojis 
-        ],
-      label $ "🤓 Found emojis: " <> showt (length (model ^. emojis))
-    ] `styleBasic` [padding 10]
+generateTuples :: [[a]] -> [(a, [a])]
+generateTuples = concatMap (\xs -> [(x, xs) | x <- xs])
 
-handleEvent
-  :: WidgetEnv AppModel AppEvent
-  -> WidgetNode AppModel AppEvent
-  -> AppModel
-  -> AppEvent
-  -> [AppEventResponse AppModel AppEvent]
-handleEvent wenv node model evt = case evt of
-  AppInit -> []
-  AppSearch s -> [
-    Model (model & query .~ s & emojis .~ fuzzyFindEmoji s)
-    ]
+-- showResults :: T.Text -> Box -> _
+showResults query flowbox n = do
+  -- 1. clear the box
+  containerForeach flowbox widgetDestroy
+  -- 2. get the results
+  let results = fuzzyFindEmojiSorted query & take n
+  -- 3. show the results
+  forM_ results $ \emoji -> do
+    button <- buttonNew
+    setButtonLabel button (_openMoji_emoji $ Fuzzy.original emoji)
+    widgetSetTooltipText button (Just $ T.unlines [
+      _openMoji_annotation $ Fuzzy.original emoji,
+      "Tags: " <> T.intercalate ", " (_openMoji_tags $ Fuzzy.original emoji),
+      "Score: " <> T.pack (show $ Fuzzy.score emoji),
+      "Match: " <> T.pack (show $ Fuzzy.rendered emoji)
+      ])
+    containerAdd flowbox button
+  putStrLn [i|Showing #{length results} results for '#{query}'|]
+  widgetShowAll flowbox
 
 main :: IO ()
 main = do
-  exeDir <- takeDirectory <$> getExecutablePath
-  let
-    config = [
-      appWindowTitle "Emoji-Keyboard",
-      appWindowIcon "./assets/images/icon.png",
-      appTheme darkTheme,
-      appFontDef "Emoji" [i|#{exeDir}/../assets/fonts/NotoColorEmoji-Regular.ttf |],
-      appFontDef "Regular" [i|#{exeDir}/../assets/fonts/Roboto-Regular.ttf|],
-      appFontDef "Medium" [i|#{exeDir}/../assets/fonts/Roboto-Medium.ttf|],
-      appFontDef "Bold" [i|#{exeDir}/../assets/fonts/Roboto-Bold.ttf|],
-      appFontDef "Remix" [i|#{exeDir}/../assets/fonts/remixicon.ttf|],
-      appInitEvent AppInit
-      ]
-    model = AppModel "" []
-  startApp model handleEvent buildUI config
+  Gtk.init Nothing
+  -- Create a new window
+  window <- windowNew WindowTypeToplevel
+  onWidgetDestroy window mainQuit
+  setContainerBorderWidth window 10
+  setWindowTitle window "Emoji-Keyboard"
 
--- | Fuzzy-find emojis by their annotation
-fuzzyFindEmoji :: Text -> [OpenMoji]
-fuzzyFindEmoji query = do
-  let emojis = fuzzyFindEmoji' query
-  let sorted = sortBy (\x y -> compare (Fuzzy.score x) (Fuzzy.score y)) emojis
-  [Fuzzy.original x | x <- sorted]
+  -- create a new column
+  root <- boxNew OrientationVertical 10
 
-fuzzyFindEmoji' :: Text -> [Fuzzy.Fuzzy OpenMoji Text]
-fuzzyFindEmoji' query = Fuzzy.filter Fuzzy.IgnoreCase ("","") _openMoji_annotation query openmojis 
+  -- Add a searchbar (for the search query)
+  search <- searchEntryNew
+  boxPackStart root search False False 0
+
+  results <- flowBoxNew 
+  boxPackStart root results False False 0
+
+  showResults "smile" results 30
+  afterSearchEntrySearchChanged search $ do
+    -- get the search entries text
+    query <- entryGetText search
+    showResults query results 30
+
+  setContainerChild window root
+
+  widgetShowAll window
+  Gtk.main
