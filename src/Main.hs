@@ -27,6 +27,8 @@ import Data.List.Split (chunksOf)
 import Data.Maybe (fromMaybe, listToMaybe, catMaybes, mapMaybe)
 import System.Process.Typed (readProcessStdout)
 import System.Process (readProcessWithExitCode)
+import Control.Concurrent (forkIO, threadDelay)
+import Control.DeepSeq (deepseq)
 
 -- | Fuzzy-find emojis by their annotation
 fuzzyFindEmojiSorted :: T.Text -> [Fuzzy.Fuzzy OpenMoji T.Text]
@@ -49,7 +51,7 @@ generateTuples :: [[a]] -> [(a, [a])]
 generateTuples = concatMap (\xs -> [(x, xs) | x <- xs])
 
 -- showResults :: T.Text -> Box -> _
-showResults query flowbox n = do
+showResults query flowbox n onClick = do
   -- 1. clear the box
   containerForeach flowbox widgetDestroy
   -- 2. get the results
@@ -58,6 +60,7 @@ showResults query flowbox n = do
   forM_ results $ \emoji -> do
     button <- buttonNew
     setButtonLabel button (_openMoji_emoji $ Fuzzy.original emoji)
+    onButtonClicked button $ onClick emoji
     widgetSetTooltipText button (Just $ T.unlines [
       _openMoji_annotation $ Fuzzy.original emoji,
       "Tags: " <> T.intercalate ", " (_openMoji_tags $ Fuzzy.original emoji),
@@ -89,11 +92,24 @@ main = do
   results <- flowBoxNew 
   boxPackStart root results False False 0
 
-  showResults "smile" results 30
+  let typeText :: T.Text -> IO ()
+      typeText text = do
+        let activate = do 
+              putStrLn $ "Activating " <> active
+              readProcessWithExitCode "kdotool" ["windowactivate", active] ""
+        let typing = do
+              putStrLn $ "Typing " <> T.unpack text
+              readProcessWithExitCode "ydotool" ["type", "--delay=50", T.unpack text] ""
+        void $ activate `seq` typing
+        -- widgetDestroy window
+
+  showResults "smile" results 30 $ \e -> 
+    typeText (_openMoji_emoji (Fuzzy.original e))
   afterSearchEntrySearchChanged search $ do
     -- get the search entries text
     query <- entryGetText search
-    showResults query results 30
+    showResults query results 30 $ \e ->
+      typeText (_openMoji_emoji (Fuzzy.original e))
 
   setContainerChild window root
 
