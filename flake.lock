@@ -18,18 +18,6 @@
         "type": "github"
       }
     },
-    "gemoji-database": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-dB3xH1J0d5fDDYSP0WUiIP8kcKu2MA6XlEpSLn9FBOs=",
-        "type": "file",
-        "url": "https://raw.githubusercontent.com/github/gemoji/master/db/emoji.json"
-      },
-      "original": {
-        "type": "file",
-        "url": "https://raw.githubusercontent.com/github/gemoji/master/db/emoji.json"
-      }
-    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1717196966,
@@ -49,7 +37,6 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "gemoji-database": "gemoji-database",
         "nixpkgs": "nixpkgs"
       }
     },
