@@ -28,16 +28,7 @@
 
           src = ./src;
 
-          nativeBuildInputs = with pkgs; [
-            wayland
-            wlroots
-            wayland-protocols
-            myGHC
-          ];
           buildInputs = with pkgs; [
-            wayland
-            wlroots
-            wayland-protocols
             myGHC
           ];
 
@@ -52,7 +43,16 @@
             mkdir -p $out/bin
             echo "adding fonts..."
             cp -r $src/assets $out/assets
-            cp emoji-keyboard $out/bin
+            cp emoji-keyboard $out/bin/emoji-keyboard-unwrapped
+            echo "wrapping the application to add programs to its PATH..."
+            cat > $out/bin/emoji-keyboard <<EOF
+              #!/bin/sh
+              # Set the necessary environment variables
+              export PATH=\$PATH:${pkgs.kdotool}/bin:${pkgs.ydotool}/bin
+              # Run the unwrapped application
+              exec $out/bin/emoji-keyboard-unwrapped "\$@"
+            EOF
+            chmod +x $out/bin/emoji-keyboard
           '';
 
           meta = {
@@ -63,11 +63,8 @@
 
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [
-            cmake
-            pkg-config
-            wayland
-            wlroots
-            wayland-protocols
+            kdotool
+            ydotool
             myGHC
             haskell-language-server
             haskellPackages.haskell-dap

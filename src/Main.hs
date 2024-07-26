@@ -25,6 +25,8 @@ import GI.Gtk.Enums (WindowType(..))
 import Control.Monad (forM, forM_, void)
 import Data.List.Split (chunksOf)
 import Data.Maybe (fromMaybe, listToMaybe, catMaybes, mapMaybe)
+import System.Process.Typed (readProcessStdout)
+import System.Process (readProcessWithExitCode)
 
 -- | Fuzzy-find emojis by their annotation
 fuzzyFindEmojiSorted :: T.Text -> [Fuzzy.Fuzzy OpenMoji T.Text]
@@ -68,6 +70,8 @@ showResults query flowbox n = do
 
 main :: IO ()
 main = do
+  (_, active,_) <- readProcessWithExitCode "kdotool" ["getactivewindow"] ""
+  putStrLn active
   Gtk.init Nothing
   -- Create a new window
   window <- windowNew WindowTypeToplevel
