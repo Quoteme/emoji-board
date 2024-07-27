@@ -84,7 +84,8 @@ typeText window text = copy >> activate >> paste & void
  where
   activate = readProcess "kdotool" ["windowactivate", window] ""
   copy = readProcess "wl-copy" [] $ T.unpack text
-  paste = readProcess "ydotool" ["key", "29:1", "47:1", "47:0", "29:0"] ""
+  -- simulate `ctrl+shift+v
+  paste = readProcess "ydotool" ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"] ""
 
 main :: IO ()
 main = do
@@ -108,12 +109,12 @@ main = do
   results <- boxNew OrientationVertical 10
   boxPackStart root results False False 0
 
-  showResults "smile" results 10 10 $ \e ->
+  showResults "smile" results 10 5 $ \e ->
     typeText active (_openMoji_emoji (Fuzzy.original e))
   afterSearchEntrySearchChanged search $ do
     -- get the search entries text
     query <- entryGetText search
-    showResults query results 10 10 $ \e ->
+    showResults query results 10 5 $ \e ->
       typeText active (_openMoji_emoji (Fuzzy.original e))
 
   setContainerChild window root
