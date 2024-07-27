@@ -58,6 +58,7 @@ import GI.Gtk (
  )
 import GI.Gtk qualified as Gtk (init, main)
 import GI.Gtk.Enums (WindowType (..))
+import GI.Gtk.Objects (FlowBox)
 import GI.Gtk.Objects.Window (windowSetDefaultSize)
 import System.Process (readProcess, readProcessWithExitCode)
 import System.Process.Typed (readProcessStdout)
@@ -83,7 +84,7 @@ fuzzyFindEmoji query = mapMaybe (doesEmojiMatch query) openmojis
 generateTuples :: [[a]] -> [(a, [a])]
 generateTuples = concatMap (\xs -> [(x, xs) | x <- xs])
 
--- showResults :: T.Text -> Box -> _
+showResults :: T.Text -> FlowBox -> Int -> (Fuzzy.Fuzzy OpenMoji T.Text -> IO ()) -> IO ()
 showResults query flowbox n onClick = do
   -- 1. clear the box
   containerForeach flowbox widgetDestroy
@@ -108,24 +109,11 @@ showResults query flowbox n onClick = do
   widgetShowAll flowbox
 
 typeText :: String -> T.Text -> IO ()
-typeText window text = do
-  let activate = do
-        putStrLn ""
-        putStrLn [i|Activating #{window} by running:|]
-        putStrLn [i|> `kdotool windowactivate #{window}`|]
-        output <- readProcess "kdotool" ["windowactivate", window] ""
-        putStrLn [i|Output: #{output}|]
-  let copy = do
-        putStrLn [i|Copying '#{text}' to the clipboard by running:|]
-        putStrLn [i|> `wl-copy '#{text}'`|]
-        output <- readProcess "wl-copy" [] $ T.unpack text
-        putStrLn [i|Output: #{output}|]
-  let paste = do
-        putStrLn [i|Pasting '#{text}' by running:|]
-        putStrLn [i|> `ydotool key 29:1 47:1 47:0 29:0`|]
-        output <- readProcess "ydotool" ["key", "29:1", "47:1", "47:0", "29:0"] ""
-        putStrLn [i|Output: #{output}|]
-  void $ copy >> activate >> paste
+typeText window text = copy >> activate >> paste & void
+ where
+  activate = readProcess "kdotool" ["windowactivate", window] ""
+  copy = readProcess "wl-copy" [] $ T.unpack text
+  paste = readProcess "ydotool" ["key", "29:1", "47:1", "47:0", "29:0"] ""
 
 main :: IO ()
 main = do
@@ -148,8 +136,6 @@ main = do
 
   results <- flowBoxNew
   boxPackStart root results False False 0
-
-  -- widgetDestroy window
 
   showResults "smile" results 30 $ \e ->
     typeText active (_openMoji_emoji (Fuzzy.original e))
