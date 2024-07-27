@@ -1,4 +1,4 @@
-# emoji-board
+# emoji-board 🤓👍⌨
 
 A super simple, blazing fast, and lightweight emoji picker for Wayland[^1]
 
@@ -35,6 +35,8 @@ add this flake to your system configuration like so:
   };
 }
 ```
+
+Now you can run `emoji-board` from the command line 💻.
 
 ## Usage
 
