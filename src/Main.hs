@@ -22,40 +22,7 @@ import Control.Monad (forM, forM_, void)
 import Data.List.Split (chunksOf)
 import Data.Maybe (catMaybes, fromMaybe, listToMaybe, mapMaybe)
 import GI.Gdk.Objects.Window (windowSetGeometryHints)
-import GI.Gtk (
-  Box,
-  Orientation (OrientationHorizontal, OrientationVertical),
-  afterSearchEntrySearchChanged,
-  afterSearchEntryStopSearch,
-  boxNew,
-  boxPackEnd,
-  boxPackStart,
-  buttonNew,
-  containerAdd,
-  containerForeach,
-  entryGetText,
-  flowBoxInsert,
-  flowBoxNew,
-  mainQuit,
-  onButtonClicked,
-  onEntryBufferInsertedText,
-  onSearchEntrySearchChanged,
-  onWidgetDestroy,
-  searchBarNew,
-  searchEntryHandleEvent,
-  searchEntryNew,
-  setButtonLabel,
-  setContainerBorderWidth,
-  setContainerChild,
-  setWindowTitle,
-  widgetDestroy,
-  widgetSetTooltipText,
-  widgetShowAll,
-  windowNew,
-  windowSetDecorated,
-  windowSetResizable,
-  windowSetTypeHint,
- )
+import GI.Gtk (Box, Orientation (OrientationHorizontal, OrientationVertical), afterSearchEntrySearchChanged, afterSearchEntryStopSearch, boxNew, boxPackEnd, boxPackStart, buttonNew, containerAdd, containerForeach, entryGetText, flowBoxInsert, flowBoxNew, mainQuit, onButtonClicked, onEntryBufferInsertedText, onSearchEntrySearchChanged, onWidgetDestroy, searchBarNew, searchEntryHandleEvent, searchEntryNew, setButtonLabel, setContainerBorderWidth, setContainerChild, setWindowTitle, widgetDestroy, widgetSetTooltipText, widgetShowAll, windowNew, windowResize, windowSetDecorated, windowSetResizable, windowSetTypeHint)
 import GI.Gtk qualified as Gtk (init, main)
 import GI.Gtk.Enums (WindowType (..))
 import GI.Gtk.Objects (FlowBox)
@@ -84,29 +51,33 @@ fuzzyFindEmoji query = mapMaybe (doesEmojiMatch query) openmojis
 generateTuples :: [[a]] -> [(a, [a])]
 generateTuples = concatMap (\xs -> [(x, xs) | x <- xs])
 
-showResults :: T.Text -> FlowBox -> Int -> (Fuzzy.Fuzzy OpenMoji T.Text -> IO ()) -> IO ()
-showResults query flowbox n onClick = do
+showResults :: T.Text -> Box -> Int -> Int -> (Fuzzy.Fuzzy OpenMoji T.Text -> IO ()) -> IO ()
+showResults query box m n onClick = do
   -- 1. clear the box
-  containerForeach flowbox widgetDestroy
+  containerForeach box widgetDestroy
   -- 2. get the results
-  let results = fuzzyFindEmojiSorted query & take n
+  let results = fuzzyFindEmojiSorted query & take (m * n)
+  let rows = chunksOf m results
   -- 3. show the results
-  forM_ results $ \emoji -> do
-    button <- buttonNew
-    setButtonLabel button (_openMoji_emoji $ Fuzzy.original emoji)
-    onButtonClicked button $ onClick emoji
-    widgetSetTooltipText
-      button
-      ( Just $
-          T.unlines
-            [ _openMoji_annotation $ Fuzzy.original emoji
-            , "Tags: " <> T.intercalate ", " (_openMoji_tags $ Fuzzy.original emoji)
-            , "Score: " <> T.pack (show $ Fuzzy.score emoji)
-            , "Match: " <> T.pack (show $ Fuzzy.rendered emoji)
-            ]
-      )
-    containerAdd flowbox button
-  widgetShowAll flowbox
+  forM_ rows $ \row -> do
+    rowBox <- boxNew OrientationHorizontal 10
+    boxPackStart box rowBox False False 0
+    forM_ row $ \emoji -> do
+      button <- buttonNew
+      setButtonLabel button (_openMoji_emoji $ Fuzzy.original emoji)
+      onButtonClicked button $ onClick emoji
+      widgetSetTooltipText
+        button
+        ( Just $
+            T.unlines
+              [ _openMoji_annotation $ Fuzzy.original emoji
+              , "Tags: " <> T.intercalate ", " (_openMoji_tags $ Fuzzy.original emoji)
+              , "Score: " <> T.pack (show $ Fuzzy.score emoji)
+              , "Match: " <> T.pack (show $ Fuzzy.rendered emoji)
+              ]
+        )
+      containerAdd rowBox button
+  widgetShowAll box
 
 typeText :: String -> T.Text -> IO ()
 typeText window text = copy >> activate >> paste & void
@@ -121,7 +92,7 @@ main = do
   Gtk.init Nothing
   -- Create a new window
   window <- windowNew WindowTypeToplevel
-  windowSetDefaultSize window 500 300
+  windowSetDefaultSize window 500 250
   -- mark the window such that it will not be tiled by the window manager
   onWidgetDestroy window mainQuit
   setContainerBorderWidth window 10
@@ -134,15 +105,15 @@ main = do
   search <- searchEntryNew
   boxPackStart root search False False 0
 
-  results <- flowBoxNew
+  results <- boxNew OrientationVertical 10
   boxPackStart root results False False 0
 
-  showResults "smile" results 30 $ \e ->
+  showResults "smile" results 10 10 $ \e ->
     typeText active (_openMoji_emoji (Fuzzy.original e))
   afterSearchEntrySearchChanged search $ do
     -- get the search entries text
     query <- entryGetText search
-    showResults query results 30 $ \e ->
+    showResults query results 10 10 $ \e ->
       typeText active (_openMoji_emoji (Fuzzy.original e))
 
   setContainerChild window root
