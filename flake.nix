@@ -50,9 +50,10 @@
 
           installPhase = ''
             mkdir -p $out/bin
-            echo "adding fonts..."
-            cp -r $src/assets $out/assets
             cp emoji-keyboard $out/bin/
+            # copy over the .desktop file
+            mkdir -p $out/share/applications
+            cp assets/emoji-keyboard.desktop $out/share/applications/
             chmod +x $out/bin/emoji-keyboard
           '';
 
