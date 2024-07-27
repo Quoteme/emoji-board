@@ -54,7 +54,7 @@ import GI.Gtk (
  )
 import GI.Gtk qualified as Gtk (init, main)
 import GI.Gtk.Enums (WindowType (..))
-import System.Process (readProcessWithExitCode)
+import System.Process (readProcess, readProcessWithExitCode)
 import System.Process.Typed (readProcessStdout)
 
 -- | Fuzzy-find emojis by their annotation
@@ -103,10 +103,29 @@ showResults query flowbox n onClick = do
   putStrLn [i|Showing #{length results} results for '#{query}'|]
   widgetShowAll flowbox
 
+typeText :: String -> T.Text -> IO ()
+typeText window text = do
+  let activate = do
+        putStrLn ""
+        putStrLn [i|Activating #{window} by running:|]
+        putStrLn [i|> `kdotool windowactivate #{window}`|]
+        output <- readProcess "kdotool" ["windowactivate", window] ""
+        putStrLn [i|Output: #{output}|]
+  let copy = do
+        putStrLn [i|Copying '#{text}' to the clipboard by running:|]
+        putStrLn [i|> `wl-copy '#{text}'`|]
+        output <- readProcess "wl-copy" [] $ T.unpack text
+        putStrLn [i|Output: #{output}|]
+  let paste = do
+        putStrLn [i|Pasting '#{text}' by running:|]
+        putStrLn [i|> `ydotool key 29:1 47:1 47:0 29:0`|]
+        output <- readProcess "ydotool" ["key", "29:1", "47:1", "47:0", "29:0"] ""
+        putStrLn [i|Output: #{output}|]
+  void $ copy >> activate >> paste
+
 main :: IO ()
 main = do
-  (_, active, _) <- readProcessWithExitCode "kdotool" ["getactivewindow"] ""
-  putStrLn active
+  active <- head . lines <$> readProcess "kdotool" ["getactivewindow"] ""
   Gtk.init Nothing
   -- Create a new window
   window <- windowNew WindowTypeToplevel
@@ -124,24 +143,15 @@ main = do
   results <- flowBoxNew
   boxPackStart root results False False 0
 
-  let typeText :: T.Text -> IO ()
-      typeText text = do
-        let activate = do
-              putStrLn $ "Activating " <> active
-              readProcessWithExitCode "kdotool" ["windowactivate", active] ""
-        let typing = do
-              putStrLn $ "Typing " <> T.unpack text
-              readProcessWithExitCode "ydotool" ["type", "--delay=50", T.unpack text] ""
-        void $ activate `seq` typing
   -- widgetDestroy window
 
   showResults "smile" results 30 $ \e ->
-    typeText (_openMoji_emoji (Fuzzy.original e))
+    typeText active (_openMoji_emoji (Fuzzy.original e))
   afterSearchEntrySearchChanged search $ do
     -- get the search entries text
     query <- entryGetText search
     showResults query results 30 $ \e ->
-      typeText (_openMoji_emoji (Fuzzy.original e))
+      typeText active (_openMoji_emoji (Fuzzy.original e))
 
   setContainerChild window root
 

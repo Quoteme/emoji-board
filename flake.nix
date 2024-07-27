@@ -19,7 +19,8 @@
           fuzzily
           gi-gtk
         ]);
-      in rec
+      in
+      rec
       {
         defaultPackage = packages.emoji-keyboard;
         packages.emoji-keyboard = pkgs.stdenv.mkDerivation (finalAttrs: {
@@ -48,7 +49,7 @@
             cat > $out/bin/emoji-keyboard <<EOF
               #!/bin/sh
               # Set the necessary environment variables
-              export PATH=\$PATH:${pkgs.kdotool}/bin:${pkgs.ydotool}/bin
+              export PATH=\$PATH:${pkgs.kdotool}/bin:${pkgs.wl-clipboard}/bin:${pkgs.ydotool}/bin
               # Run the unwrapped application
               exec $out/bin/emoji-keyboard-unwrapped "\$@"
             EOF
@@ -65,6 +66,7 @@
           buildInputs = with pkgs; [
             kdotool
             ydotool
+            wl-clipboard
             myGHC
             haskell-language-server
             haskellPackages.haskell-dap
