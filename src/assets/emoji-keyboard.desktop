@@ -2,9 +2,9 @@
 Categories=Utility;
 Comment[de_DE]=Launch Emoji Keyboard
 Comment=Launch Emoji Keyboard
-Exec=emoji-keyboard-unwrapped
-GenericName[de_DE]=
-GenericName=
+Exec=emoji-keyboard
+GenericName[de_DE]=Emoji Tastatur
+GenericName=Emoji Keyboard
 Icon=preferences-desktop-emoticons
 MimeType=
 Name[de_DE]=Emoji Keyboard
