@@ -21,6 +21,7 @@ import Control.DeepSeq (deepseq)
 import Control.Monad (forM, forM_, void)
 import Data.List.Split (chunksOf)
 import Data.Maybe (catMaybes, fromMaybe, listToMaybe, mapMaybe)
+import GI.Gdk.Objects.Window (windowSetGeometryHints)
 import GI.Gtk (
   Box,
   Orientation (OrientationHorizontal, OrientationVertical),
@@ -51,9 +52,13 @@ import GI.Gtk (
   widgetSetTooltipText,
   widgetShowAll,
   windowNew,
+  windowSetDecorated,
+  windowSetResizable,
+  windowSetTypeHint,
  )
 import GI.Gtk qualified as Gtk (init, main)
 import GI.Gtk.Enums (WindowType (..))
+import GI.Gtk.Objects.Window (windowSetDefaultSize)
 import System.Process (readProcess, readProcessWithExitCode)
 import System.Process.Typed (readProcessStdout)
 
@@ -100,7 +105,6 @@ showResults query flowbox n onClick = do
             ]
       )
     containerAdd flowbox button
-  putStrLn [i|Showing #{length results} results for '#{query}'|]
   widgetShowAll flowbox
 
 typeText :: String -> T.Text -> IO ()
@@ -129,6 +133,8 @@ main = do
   Gtk.init Nothing
   -- Create a new window
   window <- windowNew WindowTypeToplevel
+  windowSetDefaultSize window 500 300
+  -- mark the window such that it will not be tiled by the window manager
   onWidgetDestroy window mainQuit
   setContainerBorderWidth window 10
   setWindowTitle window "Emoji-Keyboard"
