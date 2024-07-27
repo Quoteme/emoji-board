@@ -29,7 +29,14 @@
 
           src = ./src;
 
+          nativeBuildInputs = with pkgs; [
+            makeWrapper
+          ];
+
           buildInputs = with pkgs; [
+            kdotool
+            ydotool
+            wl-clipboard
             myGHC
           ];
 
@@ -40,20 +47,20 @@
             ghc Main.hs
             mv Main emoji-keyboard
           '';
+
           installPhase = ''
             mkdir -p $out/bin
             echo "adding fonts..."
             cp -r $src/assets $out/assets
-            cp emoji-keyboard $out/bin/emoji-keyboard-unwrapped
-            echo "wrapping the application to add programs to its PATH..."
-            cat > $out/bin/emoji-keyboard <<EOF
-              #!/bin/sh
-              # Set the necessary environment variables
-              export PATH=\$PATH:${pkgs.kdotool}/bin:${pkgs.wl-clipboard}/bin:${pkgs.ydotool}/bin
-              # Run the unwrapped application
-              exec $out/bin/emoji-keyboard-unwrapped "\$@"
-            EOF
+            cp emoji-keyboard $out/bin/
             chmod +x $out/bin/emoji-keyboard
+          '';
+
+          preFixup = ''
+            wrapProgram "$out/bin/emoji-keyboard" \
+              --prefix PATH : ${pkgs.kdotool}/bin \
+              --prefix PATH : ${pkgs.ydotool}/bin \
+              --prefix PATH : ${pkgs.wl-clipboard}/bin
           '';
 
           meta = {
