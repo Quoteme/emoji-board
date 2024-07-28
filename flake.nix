@@ -70,7 +70,7 @@
           };
         });
 
-        devShell = pkgs.mkShell {
+        devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             kdotool
             ydotool
@@ -84,6 +84,35 @@
 
           shellHook = ''
             echo "Welcome to the emoji-keyboard dev shell"
+          '';
+        };
+
+        devShells.cabal = with pkgs; mkShell {
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+          ];
+          buildInputs = with pkgs; [
+            (haskellPackages.ghcWithPackages
+              (pkgs: with pkgs; [ cabal-install ])
+            )
+            gtk4
+            gobject-introspection
+            at-spi2-atk
+            pcre2
+            xorg.libXdmcp
+            glib
+            pam_mount
+            util-linux
+            libuuid
+            libselinux
+            libsepol
+            fribidi
+            libthai
+            libdatrie
+          ];
+          shellHook = ''
+            echo "You entered the cabal devshell"
+            echo "This devshell sets up cabal using nix to test the cabal configuration"
           '';
         };
       }
