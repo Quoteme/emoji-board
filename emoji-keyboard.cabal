@@ -1,0 +1,45 @@
+cabal-version: 3.8
+name:          emoji-keyboard
+version:       1.0
+category:      Desktop
+synopsis:      An emoji-keyboard for Wayland and Plasma
+license:       BSD-3-Clause
+author:        Luca Leon Happel <lucahappel99@gmx.de>
+maintainer:    Luca Leon Happel <lucahappel99@gmx.de>
+copyright:     2024 Luca Leon Happel
+build-type:    Simple
+tested-with:   GHC ==9.8.2
+
+source-repository head
+  type:     git
+  location: https://github.com/Quoteme/emoji-board
+
+common ghc-options
+  ghc-options:
+    -Wall -Wcompat -Widentities -Wincomplete-record-updates
+    -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
+    -fhide-source-paths -Wno-unused-do-bind -fshow-hole-constraints
+    -Wno-unticked-promoted-constructors
+
+common rts-options
+  ghc-options: -rtsopts -threaded "-with-rtsopts=-N -T"
+
+executable emoji-keyboard
+  import:           ghc-options
+  import:           rts-options
+  main-is:          src/Main.hs
+  build-depends:
+    , aeson               ^>=2.2
+    , base                ^>=4.18
+    , deepseq             ^>=1.4
+    , fuzzily             ^>=0.2
+    , gi-gdk              ^>=3.0
+    , gi-gtk              ^>=3.0
+    , hs-openmoji-data    ^>=15.0
+    , process             ^>=1.6
+    , split               ^>=0.2
+    , string-interpolate  ^>=0.3
+    , text                ^>=2.0
+    , typed-process       ^>=0.2
+
+  default-language: GHC2021
