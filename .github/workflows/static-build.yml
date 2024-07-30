@@ -15,10 +15,7 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
       - uses: DeterminateSystems/magic-nix-cache-action@v2
-      - run: |
-          echo "experimental-features = nix-command flakes" | sudo tee -a /etc/nix/nix.conf
-          nix-env -iA nixpkgs.nixFlakes
-      - run: nix build --no-link .#defaultPackage.x86_64-linux
+      - run: nix build --experimental-features 'nix-command flakes' --no-link .#defaultPackage.x86_64-linux
       - run: nix-shell --run "echo OK"
       - name: Zip the result folder
         run: |
