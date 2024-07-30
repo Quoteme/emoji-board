@@ -16,7 +16,6 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
       - uses: DeterminateSystems/magic-nix-cache-action@v2
       - run: nix build --experimental-features 'nix-command flakes' --no-link .#defaultPackage.x86_64-linux
-      - run: nix-shell --run "echo OK"
       - name: Zip the result folder
         run: |
           mkdir -p output
