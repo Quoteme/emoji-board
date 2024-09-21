@@ -80,16 +80,26 @@ showResults query box m n onClick = do
   widgetShowAll box
 
 typeText :: String -> T.Text -> IO ()
-typeText window text = copy >> activate >> paste & void
- where
-  activate = readProcess "kdotool" ["windowactivate", window] ""
-  copy = readProcess "wl-copy" [] $ T.unpack text
-  -- simulate `ctrl+shift+v
-  paste = readProcess "ydotool" ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"] ""
+typeText windowIdToTypeInfo text = do
+  -- Get the ID of the emoji-keyboard window (after it has been created and is
+  -- therefor focused). We will need this value, when we try to refocus on the
+  -- emoji-keyboard after we have typed some text into `focusedWindowID`.
+  emojiKeyboardWindowID <- head . lines <$> readProcess "kdotool" ["getactivewindow"] ""
+  let
+    focus = readProcess "kdotool" ["windowactivate", windowIdToTypeInfo] ""
+    refocus = readProcess "kdotool" ["windowactivate", emojiKeyboardWindowID] ""
+    copy = readProcess "wl-copy" [] $ T.unpack text
+    -- simulate `ctrl+shift+v
+    paste = readProcess "ydotool" ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"] ""
+   in
+    copy >> focus >> paste >> refocus & void
 
 main :: IO ()
 main = do
-  active <- head . lines <$> readProcess "kdotool" ["getactivewindow"] ""
+  -- Get the ID of the currently focused window (before we open up the
+  -- emoji-keyboard window).
+  -- We do this, so we can focus on it during `typeText`!
+  focusedWindowID <- head . lines <$> readProcess "kdotool" ["getactivewindow"] ""
   Gtk.init Nothing
   -- Create a new window
   window <- windowNew WindowTypeToplevel
@@ -110,12 +120,12 @@ main = do
   boxPackStart root results False False 0
 
   showResults "smile" results 10 5 $ \e ->
-    typeText active (_openMoji_emoji (Fuzzy.original e))
+    typeText focusedWindowID (_openMoji_emoji (Fuzzy.original e))
   afterSearchEntrySearchChanged search $ do
     -- get the search entries text
     query <- entryGetText search
     showResults query results 10 5 $ \e ->
-      typeText active (_openMoji_emoji (Fuzzy.original e))
+      typeText focusedWindowID (_openMoji_emoji (Fuzzy.original e))
 
   setContainerChild window root
 
