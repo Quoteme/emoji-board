@@ -21,9 +21,10 @@ import Control.DeepSeq (deepseq)
 import Control.Monad (forM, forM_, void)
 import Data.List.Split (chunksOf)
 import Data.Maybe (catMaybes, fromMaybe, listToMaybe, mapMaybe)
+import GI.Gdk (keyvalName, keyvalToUnicode)
 import GI.Gdk.Objects.Window (windowSetGeometryHints)
-import GI.Gtk (Box, Orientation (OrientationHorizontal, OrientationVertical), afterSearchEntrySearchChanged, afterSearchEntryStopSearch, boxNew, boxPackEnd, boxPackStart, buttonNew, containerAdd, containerForeach, entryGetText, flowBoxInsert, flowBoxNew, mainQuit, onButtonClicked, onEntryBufferInsertedText, onSearchEntrySearchChanged, onWidgetDestroy, searchBarNew, searchEntryHandleEvent, searchEntryNew, setButtonLabel, setContainerBorderWidth, setContainerChild, setWindowTitle, widgetDestroy, widgetSetTooltipText, widgetShowAll, windowNew, windowResize, windowSetDecorated, windowSetResizable, windowSetTypeHint)
-import GI.Gtk qualified as Gtk (init, main)
+import GI.Gtk (Box, Orientation (OrientationHorizontal, OrientationVertical), afterSearchEntrySearchChanged, afterSearchEntryStopSearch, boxNew, boxPackEnd, boxPackStart, buttonNew, containerAdd, containerForeach, entryGetText, flowBoxInsert, flowBoxNew, mainQuit, onButtonClicked, onEntryBufferInsertedText, onSearchEntrySearchChanged, onWidgetDestroy, onWidgetKeyPressEvent, searchBarNew, searchEntryHandleEvent, searchEntryNew, setButtonLabel, setContainerBorderWidth, setContainerChild, setWindowTitle, widgetDestroy, widgetSetTooltipText, widgetShowAll, windowNew, windowResize, windowSetDecorated, windowSetResizable, windowSetTypeHint)
+import GI.Gtk qualified as Gtk (get, init, main)
 import GI.Gtk.Enums (WindowType (..))
 import GI.Gtk.Objects (FlowBox)
 import GI.Gtk.Objects.Window (windowSetDefaultSize)
@@ -108,6 +109,14 @@ main = do
   onWidgetDestroy window mainQuit
   setContainerBorderWidth window 10
   setWindowTitle window "Emoji-Keyboard"
+
+  -- Add key listener for Escape key to quit application
+  onWidgetKeyPressEvent window $ \event -> do
+    keyval <- keyvalName =<< keyvalToUnicode =<< Gtk.get event #keyval
+    case keyval of
+      -- escape key pressed
+      Just "0x1b" -> mainQuit >> return True
+      _ -> return False
 
   -- create a new column
   root <- boxNew OrientationVertical 10
