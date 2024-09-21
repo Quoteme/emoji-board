@@ -53,12 +53,12 @@ generateTuples = concatMap (\xs -> [(x, xs) | x <- xs])
 
 showResults :: T.Text -> Box -> Int -> Int -> (Fuzzy.Fuzzy OpenMoji T.Text -> IO ()) -> IO ()
 showResults query box m n onClick = do
-  -- 1. clear the box
+  -- 1. clear the gtk box (here we will place the results)
   containerForeach box widgetDestroy
   -- 2. get the results
   let results = fuzzyFindEmojiSorted query & take (m * n)
   let rows = chunksOf m results
-  -- 3. show the results
+  -- 3. show the results into the gtk box
   forM_ rows $ \row -> do
     rowBox <- boxNew OrientationHorizontal 10
     boxPackStart box rowBox False False 0
